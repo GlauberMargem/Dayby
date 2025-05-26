@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Dayby",
+    "slug": "Dayby",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/Dayby.svg",
+    "backgroundColor": "#1c1c1c",
+    "scheme": "dayby",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "backgroundColor": "#1c1c1c"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Dayby.svg",
+        "backgroundColor": "#1c1c1c"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/D.svg",
+      "backgroundColor": "#1c1c1c"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/Dayby.svg",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#1c1c1c"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
