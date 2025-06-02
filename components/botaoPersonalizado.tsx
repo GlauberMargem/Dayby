@@ -8,7 +8,7 @@ interface BotaoPersonalizadoProps {
     title: string;
     onPress: () => void;
     icon: string;
-    iconType: IconType; // qual biblioteca usar
+    iconType: IconType;
 }
 
 const BotaoPersonalizado: React.FC<BotaoPersonalizadoProps> = ({ title, onPress, icon, iconType }) => {
