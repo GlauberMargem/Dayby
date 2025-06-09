@@ -5,7 +5,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native';
+import {
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+    TouchableOpacity,
+    Alert,
+} from 'react-native';
 
 import BotaoPersonalizado from '@/components/botaoPersonalizado';
 import Header from '@/components/header';
@@ -20,129 +27,90 @@ interface Rotina {
     descricao: string;
     dias: string[];
     quantidade: number;
+    progress: number;
     itens: RotinaItem[];
+}
+
+interface InventarioItem {
+    name: string;
+    quantity: string;  // quantidade em estoque, como string
+    price: string;
 }
 
 export default function HomeScreen() {
     const router = useRouter();
     const [rotinas, setRotinas] = useState<Rotina[]>([]);
 
-    // Função para ler as rotinas do AsyncStorage e atualizar estado
     const carregarRotinas = async () => {
-        try {
-            const raw = await AsyncStorage.getItem('@rotinas');
-            if (raw) {
-                const arr: Rotina[] = JSON.parse(raw);
-                const normalizadas = arr.map((r) => ({
-                    nome: r.nome,
-                    descricao: r.descricao || '',
-                    dias: Array.isArray(r.dias) ? r.dias : [],
-                    quantidade: typeof r.quantidade === 'number' ? r.quantidade : 0,
-                    itens: Array.isArray(r.itens) ? r.itens : [],
-                }));
-                console.log('Rotinas carregadas:', normalizadas);
-                setRotinas(normalizadas);
-            } else {
-                console.log('Nenhuma rotina encontrada em AsyncStorage.');
-                setRotinas([]);
-            }
-        } catch (e) {
-            console.error('Erro ao carregar rotinas:', e);
-            setRotinas([]);
-        }
-    };
-
-    // Sempre que a tela entrar em foco, recarrega as rotinas
-    useFocusEffect(
-        useCallback(() => {
-            carregarRotinas();
-        }, [])
-    );
-
-    // Botão “Adicionar rotina de exemplo”
-    const adicionarRotinaExemplo = async () => {
-        const exemplo: Rotina = {
-            nome: 'Rotina de Exemplo',
-            descricao: 'Esta é uma rotina inserida como teste',
-            dias: ['Seg', 'Qua', 'Sex'],
-            quantidade: 2,
-            itens: [{ name: 'Sacola', usedQuantity: 1 }],
-        };
-        try {
-            const raw = await AsyncStorage.getItem('@rotinas');
-            const arr: Rotina[] = raw ? JSON.parse(raw) : [];
-            arr.push(exemplo);
-            await AsyncStorage.setItem('@rotinas', JSON.stringify(arr));
-            Alert.alert('Sucesso', 'Rotina de exemplo adicionada.');
-            console.log('Rotina exemplo adicionada. Novo array:', arr);
-            carregarRotinas();
-        } catch (e) {
-            console.error('Erro ao adicionar rotina de exemplo:', e);
-            Alert.alert('Erro', 'Não foi possível adicionar o exemplo.');
-        }
-    };
-
-    // Botão “Limpar todas as rotinas (e todo o AsyncStorage)”
-    const limparTodasRotinas = async () => {
-        Alert.alert(
-            'Confirmar limpeza',
-            'Isso apagará TODAS as rotinas, inventário e compras. Deseja continuar?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Limpar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await AsyncStorage.clear();
-                            console.log('AsyncStorage totalmente limpo');
-                            // Força recarga para refletir remoção
-                            carregarRotinas();
-                            Alert.alert('Sucesso', 'Todos os dados foram apagados.');
-                        } catch (e) {
-                            console.error('Erro ao limpar AsyncStorage:', e);
-                            Alert.alert('Erro', 'Não foi possível limpar. Tente novamente.');
-                        }
-                    },
-                },
-            ]
+        const raw = await AsyncStorage.getItem('@rotinas');
+        const arr: Rotina[] = raw ? JSON.parse(raw) : [];
+        setRotinas(
+            arr.map((r) => ({
+                nome: r.nome,
+                descricao: r.descricao || '',
+                dias: Array.isArray(r.dias) ? r.dias : [],
+                quantidade: r.quantidade || 0,
+                progress: r.progress || 0,
+                itens: Array.isArray(r.itens) ? r.itens : [],
+            }))
         );
+    };
+
+    useFocusEffect(useCallback(carregarRotinas, []));
+
+    // Atualiza o inventário subtraindo usedQuantity de cada item
+    const descontarDoEstoque = async (itens: RotinaItem[]) => {
+        const rawInv = await AsyncStorage.getItem('@inventario');
+        const inv: InventarioItem[] = rawInv ? JSON.parse(rawInv) : [];
+
+        const updated = inv.map((prod) => {
+            const rotinaItem = itens.find((i) => i.name === prod.name);
+            if (!rotinaItem) return prod;
+            // subtrai sem ir abaixo de zero
+            const novaQt = Math.max(0, parseInt(prod.quantity, 10) - rotinaItem.usedQuantity);
+            return { ...prod, quantity: novaQt.toString() };
+        });
+
+        await AsyncStorage.setItem('@inventario', JSON.stringify(updated));
+    };
+
+    // Incrementa/decrementa progresso e, se alcança 100%, desconta do estoque
+    const atualizarProgresso = async (idx: number, delta: number) => {
+        const raw = await AsyncStorage.getItem('@rotinas');
+        const arr: Rotina[] = raw ? JSON.parse(raw) : [];
+        const r = arr[idx];
+        if (!r) return;
+
+        const prev = r.progress || 0;
+        const novo = Math.max(0, Math.min(r.quantidade, prev + delta));
+        r.progress = novo;
+        await AsyncStorage.setItem('@rotinas', JSON.stringify(arr));
+
+        // se acabou de concluir
+        if (prev < r.quantidade && novo === r.quantidade) {
+            await descontarDoEstoque(r.itens);
+            Alert.alert('Rotina concluída', 'Estoque atualizado com sucesso!');
+        }
+
+        carregarRotinas();
     };
 
     return (
         <View style={styles.container}>
             <Header />
-
             <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="always">
-                {/* Botões rápidos de teste */}
-                <View style={styles.quickButtonsContainer}>
-                    <TouchableOpacity style={styles.quickButton} onPress={adicionarRotinaExemplo}>
-                        <Text style={styles.quickButtonText}>+ Rotina Exemplo</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickButton, styles.clearButton]} onPress={limparTodasRotinas}>
-                        <Text style={styles.quickButtonText}>🗑️ Limpar tudo</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={styles.subtitle}>
-                    <Text style={{ fontWeight: 'bold' }}>Organize seus dias, domine sua rotina.</Text>
-                </Text>
-
-                {/* Botões principais */}
                 <BotaoPersonalizado
                     title="Criar nova rotina"
                     onPress={() => router.push('/novaRotina')}
                     icon="add-circle-outline"
                     iconType="Ionicons"
                 />
-
                 <BotaoPersonalizado
                     title="Verificar inventário"
                     onPress={() => router.push('/inventario')}
                     icon="inventory"
                     iconType="MaterialIcons"
                 />
-
                 <BotaoPersonalizado
                     title="Lista de compras"
                     onPress={() => router.push('/compras')}
@@ -150,43 +118,77 @@ export default function HomeScreen() {
                     iconType="Ionicons"
                 />
 
-                {/* Lista de rotinas cadastradas */}
                 {rotinas.length > 0 && (
                     <>
                         <Text style={[styles.subtitle, { marginTop: 20 }]}>Minhas Rotinas</Text>
-                        {rotinas.map((rotina, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                onPress={() => router.push(`/novaRotina?editIndex=${index}`)}
-                                style={styles.cardWrapper}
-                            >
-                                <View style={styles.card}>
-                                    <View style={styles.rowRotina}>
-                                        <Text style={styles.cardTitle}>{rotina.nome}</Text>
-                                        <FontAwesome5 name="edit" size={15} color="#fff" />
-                                    </View>
+                        {rotinas.map((rotina, i) => {
+                            const concluida = rotina.progress >= rotina.quantidade;
+                            const pct = rotina.quantidade > 0 ? (rotina.progress / rotina.quantidade) * 100 : 0;
 
-                                    <Text style={styles.cardSubtitle}>
-                                        <Octicons name="number" size={15} color="#fff" /> Quantidade
-                                    </Text>
-                                    <Text style={styles.cardItem}>{rotina.quantidade}</Text>
-
-                                    <Text style={styles.cardSubtitle}>
-                                        <FontAwesome5 name="calendar" size={15} color="#fff" /> Dias
-                                    </Text>
-                                    <Text style={styles.cardItem}>{rotina.dias.join(', ')}</Text>
-
-                                    <Text style={styles.cardSubtitle}>
-                                        <FontAwesome5 name="shopping-bag" size={15} color="#fff" /> Itens:
-                                    </Text>
-                                    {(rotina.itens || []).map((item: RotinaItem, i: number) => (
-                                        <Text key={i} style={styles.cardItem}>
-                                            • {item.name} (x{item.usedQuantity})
+                            return (
+                                <View key={i} style={styles.cardWrapper}>
+                                    <View
+                                        style={[
+                                            styles.card,
+                                            concluida && { backgroundColor: '#3a3a3a', opacity: 0.5 },
+                                        ]}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.cardTitle,
+                                                concluida && { textDecorationLine: 'line-through', color: '#999' },
+                                            ]}
+                                        >
+                                            {rotina.nome}
                                         </Text>
-                                    ))}
+
+                                        <View style={styles.rowProgresso}>
+                                            <Text style={styles.cardSubtitle}>
+                                                <Octicons name="number" size={15} color="#fff" /> Progresso
+                                            </Text>
+                                            <View style={styles.controls}>
+                                                <TouchableOpacity
+                                                    onPress={() => atualizarProgresso(i, -1)}
+                                                    disabled={rotina.progress <= 0 || concluida}
+                                                    style={styles.ctrlButton}
+                                                >
+                                                    <Text style={styles.ctrlText}>–</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    onPress={() => atualizarProgresso(i, +1)}
+                                                    disabled={concluida}
+                                                    style={styles.ctrlButton}
+                                                >
+                                                    <Text style={styles.ctrlText}>+</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+
+                                        <Text style={styles.cardItem}>
+                                            {rotina.progress}/{rotina.quantidade}
+                                        </Text>
+
+                                        <View style={styles.progressBar}>
+                                            <View style={[styles.progressFill, { width: `${pct}%` }]} />
+                                        </View>
+
+                                        <Text style={styles.cardSubtitle}>
+                                            <FontAwesome5 name="calendar" size={15} color="#fff" /> Dias
+                                        </Text>
+                                        <Text style={styles.cardItem}>{rotina.dias.join(', ')}</Text>
+
+                                        <Text style={styles.cardSubtitle}>
+                                            <FontAwesome5 name="shopping-bag" size={15} color="#fff" /> Itens
+                                        </Text>
+                                        {(rotina.itens || []).map((it, j) => (
+                                            <Text key={j} style={styles.cardItem}>
+                                                • {it.name} (x{it.usedQuantity})
+                                            </Text>
+                                        ))}
+                                    </View>
                                 </View>
-                            </TouchableOpacity>
-                        ))}
+                            );
+                        })}
                     </>
                 )}
             </ScrollView>
@@ -195,60 +197,37 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#1c1c1c',
-    },
-    content: {
-        paddingHorizontal: 20,
-    },
-    quickButtonsContainer: {
+    container: { flex: 1, backgroundColor: '#1c1c1c' },
+    content: { paddingHorizontal: 20, paddingBottom: 40 },
+
+    subtitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
+
+    cardWrapper: { marginBottom: 12 },
+    card: { backgroundColor: '#2a2a2a', borderRadius: 10, padding: 15 },
+
+    cardTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
+
+    rowProgresso: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginVertical: 8,
-    },
-    quickButton: {
-        flex: 1,
-        backgroundColor: '#4CAF50',
-        paddingVertical: 10,
-        marginHorizontal: 4,
-        borderRadius: 6,
         alignItems: 'center',
     },
-    clearButton: {
-        backgroundColor: '#e74c3c',
+
+    cardSubtitle: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+
+    controls: { flexDirection: 'row', gap: 8 },
+
+    ctrlButton: {
+        backgroundColor: '#6c6c6c',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    quickButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
-    subtitle: {
-        color: '#fff',
-        fontSize: 16,
-        marginBottom: 10,
-        fontWeight: 'bold',
-    },
-    cardWrapper: {
-        marginTop: 10,
-    },
-    card: {
-        backgroundColor: '#2a2a2a',
-        borderRadius: 10,
-        padding: 15,
-    },
-    cardTitle: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 5,
-    },
-    cardSubtitle: {
-        color: '#fff',
-        fontSize: 14,
-        marginTop: 10,
-        fontWeight: 'bold',
-    },
+
+    ctrlText: { color: '#fff', fontSize: 18, lineHeight: 20 },
+
     cardItem: {
         color: '#fff',
         fontSize: 14,
@@ -257,9 +236,17 @@ const styles = StyleSheet.create({
         padding: 8,
         marginTop: 5,
     },
-    rowRotina: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+
+    progressBar: {
+        height: 6,
+        backgroundColor: '#3a3a3a',
+        borderRadius: 3,
+        overflow: 'hidden',
+        marginTop: 6,
+        marginBottom: 10,
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: '#4CAF50',
     },
 });
