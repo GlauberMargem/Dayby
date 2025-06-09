@@ -1,17 +1,15 @@
-// /app/index.tsx
-
 import { FontAwesome5, Octicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
-    View,
     TouchableOpacity,
-    Alert,
+    View,
 } from 'react-native';
 
 import BotaoPersonalizado from '@/components/botaoPersonalizado';
@@ -33,7 +31,7 @@ interface Rotina {
 
 interface InventarioItem {
     name: string;
-    quantity: string;  // quantidade em estoque, como string
+    quantity: string;
     price: string;
 }
 
@@ -56,9 +54,15 @@ export default function HomeScreen() {
         );
     };
 
-    useFocusEffect(useCallback(carregarRotinas, []));
+    useFocusEffect(
+        useCallback(() => {
+            const fetch = async () => {
+                await carregarRotinas();
+            };
+            fetch();
+        }, [])
+    );
 
-    // Atualiza o inventário subtraindo usedQuantity de cada item
     const descontarDoEstoque = async (itens: RotinaItem[]) => {
         const rawInv = await AsyncStorage.getItem('@inventario');
         const inv: InventarioItem[] = rawInv ? JSON.parse(rawInv) : [];
@@ -66,7 +70,6 @@ export default function HomeScreen() {
         const updated = inv.map((prod) => {
             const rotinaItem = itens.find((i) => i.name === prod.name);
             if (!rotinaItem) return prod;
-            // subtrai sem ir abaixo de zero
             const novaQt = Math.max(0, parseInt(prod.quantity, 10) - rotinaItem.usedQuantity);
             return { ...prod, quantity: novaQt.toString() };
         });
@@ -74,7 +77,6 @@ export default function HomeScreen() {
         await AsyncStorage.setItem('@inventario', JSON.stringify(updated));
     };
 
-    // Incrementa/decrementa progresso e, se alcança 100%, desconta do estoque
     const atualizarProgresso = async (idx: number, delta: number) => {
         const raw = await AsyncStorage.getItem('@rotinas');
         const arr: Rotina[] = raw ? JSON.parse(raw) : [];
@@ -86,7 +88,6 @@ export default function HomeScreen() {
         r.progress = novo;
         await AsyncStorage.setItem('@rotinas', JSON.stringify(arr));
 
-        // se acabou de concluir
         if (prev < r.quantidade && novo === r.quantidade) {
             await descontarDoEstoque(r.itens);
             Alert.alert('Rotina concluída', 'Estoque atualizado com sucesso!');
@@ -127,18 +128,8 @@ export default function HomeScreen() {
 
                             return (
                                 <View key={i} style={styles.cardWrapper}>
-                                    <View
-                                        style={[
-                                            styles.card,
-                                            concluida && { backgroundColor: '#3a3a3a', opacity: 0.5 },
-                                        ]}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.cardTitle,
-                                                concluida && { textDecorationLine: 'line-through', color: '#999' },
-                                            ]}
-                                        >
+                                    <View style={[styles.card, concluida && { backgroundColor: '#3a3a3a', opacity: 0.5 }]}>
+                                        <Text style={[styles.cardTitle, concluida && { textDecorationLine: 'line-through', color: '#999' }]}>
                                             {rotina.nome}
                                         </Text>
 
@@ -199,24 +190,17 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#1c1c1c' },
     content: { paddingHorizontal: 20, paddingBottom: 40 },
-
     subtitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-
     cardWrapper: { marginBottom: 12 },
     card: { backgroundColor: '#2a2a2a', borderRadius: 10, padding: 15 },
-
     cardTitle: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
-
     rowProgresso: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-
     cardSubtitle: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
-
     controls: { flexDirection: 'row', gap: 8 },
-
     ctrlButton: {
         backgroundColor: '#6c6c6c',
         width: 28,
@@ -225,9 +209,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-
     ctrlText: { color: '#fff', fontSize: 18, lineHeight: 20 },
-
     cardItem: {
         color: '#fff',
         fontSize: 14,
@@ -236,7 +218,6 @@ const styles = StyleSheet.create({
         padding: 8,
         marginTop: 5,
     },
-
     progressBar: {
         height: 6,
         backgroundColor: '#3a3a3a',

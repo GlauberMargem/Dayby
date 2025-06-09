@@ -1,50 +1,83 @@
-# Welcome to your Expo app 👋
+# 📆 DayBy – Organizador de Rotinas com Inventário
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+DayBy é um aplicativo mobile desenvolvido com **React Native** e **Expo** para ajudar no gerenciamento de **rotinas diárias** e controle de **recursos** por meio de um sistema de inventário integrado.
 
-## Get started
+---
 
-1. Install dependencies
+## 📖 Descrição
 
+O app permite que o usuário cadastre tarefas recorrentes, defina os dias em que devem ser feitas e associe itens do inventário que serão utilizados. Com o avanço das tarefas, é possível acompanhar o progresso e, ao finalizar uma rotina, o app desconta automaticamente os recursos do estoque.
+
+---
+
+## ✅ Funcionalidades
+
+- Cadastro de rotinas com:
+  - Nome
+  - Descrição
+  - Dias da semana
+  - Quantidade de repetições
+
+- Integração com inventário:
+  - Seleção dinâmica de itens disponíveis
+  - Quantidade usada por rotina
+  - Desconto automático do estoque ao finalizar
+
+- Barra de progresso e controle visual:
+  - Botões de `+` e `–` para registrar execução
+  - Estilização de rotinas concluídas (texto riscado, opacidade)
+
+- Sistema de Inventário:
+  - Cadastro de itens
+  - Aumento e redução de quantidades
+  - Visualização dos itens disponíveis
+
+- Lista de Compras:
+  - Organização por categorias
+  - Criação e exclusão de itens
+
+- Armazenamento local:
+  - Utilização de `AsyncStorage` para persistência offline
+
+---
+
+## 🚀 Tecnologias Utilizadas
+
+- [React Native](https://reactnative.dev/)
+- [Expo](https://expo.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [AsyncStorage](https://react-native-async-storage.github.io/async-storage/)
+- Ícones com `@expo/vector-icons`
+
+---
+
+## 🛠️ Como executar
+
+1. Clone o repositório:
+   ```bash
+   git clone https://github.com/seuusuario/dayby.git
+   cd dayby
+   ```
+
+2. Instale as dependências:
    ```bash
    npm install
    ```
 
-2. Start the app
-
+3. Rode o projeto:
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🧠 Autor
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+**Glauber Margem**  
+Universitário noturno cansado | Café e código ☕💻
 
-## Get a fresh project
+---
 
-When you're ready, run:
+## 📌 Observações
 
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Esse projeto foi desenvolvido como parte de um **trabalho acadêmico**, mas tem potencial de evolução com novas features, como notificações diárias, sincronização em nuvem e histórico de execuções.
